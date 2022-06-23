@@ -9,19 +9,21 @@ class Manual_Control:
     def execute(self):
         s = self.env.get_state()
         if s is None:
+            print("No human face detected. Now reseting the robot arm.")
             time.sleep(0.5)
             return
+            
         
         print("state: ",s)
 
-        x1, y1, x2, y2 = s
-        x_center = (x1+x2)/2
-        y_center = (y1+y2)/2
-        w = np.abs(x2 - x1)
-        h = np.abs(y2 - y1)
+        right, left, bottom, top = s
+        x_center = (left + right)/2
+        y_center = (top + bottom)/2
+        w = np.abs(right - left)
+        h = np.abs(bottom - top)
 
         # 根据 x 调整左右
-        act2 = int((1 - x_center) * self.env.action_space[1].n)  # 假设 act2 0-9 是机械臂从最左到最右的位置 (人面对看), 人脸在照片的左边, 说明机械臂应该移动到右边
+        act2 = int((1 - x_center/self.env.screen_width) * self.env.action_space[1].n)  # 假设 act2 0-9 是机械臂从最左到最右的位置 (人面对看), 人脸在照片的左边, 说明机械臂应该移动到右边
 
         # TODO 根据 y_center 与 w*h 调整上下、前后
         pass

@@ -37,13 +37,18 @@ class TCP_Server(threading.Thread):
         self.sock.bind((IP, Port))
 
     def run(self):
-        self.sock.listen(5)
+        self.sock.listen(10)
         self.conn, self.peer_addr = self.sock.accept()
         print(f'Port: {self.Port} Connection address: ', self.peer_addr)
 
         if self.Port == t_port:
             while 1:
-                recv = self.conn.recv(BUFFER_SIZE).decode()
+                try:
+                    recv = self.conn.recv(BUFFER_SIZE).decode()
+                except:
+                    print("Connection broke out! Waiting for another connection...")
+                    self.conn, self.peer_addr = self.sock.accept()
+                    print(f'Port: {self.Port} Connection address: ', self.peer_addr)
                 print(f'Time: {time.time()} | Port: {self.Port} | Receive data: ', recv)
                 threadLock.acquire()
                 recv_buffer.append(recv)
@@ -88,7 +93,6 @@ class Arm_Env(object):
             s = list(map(int, s)) # str list -> float list
             s = np.array(s)
         except:
-            print("没有获取到机械臂状态")
             s = None
 
         threadLock.release()
@@ -112,7 +116,6 @@ class Arm_Env(object):
         dif = np.sqrt((h - h_std)**2 + (w - w_std)**2)
 
         return dis + dif
-
 
     def execute(self, action):
         # TODO 将 action 翻译成 p 板能识别的格式
