@@ -4,6 +4,8 @@ from gym import spaces
 import socket
 import threading
 
+from Servo import Servo
+
 GAMMA = .9
 MAX_OUNOISE_SIGMA = .8
 custom_ounoise_sigma = 0.3   # 如果是 -1，则从 MAX_OUNOISE_SIGMA 开始逐渐减小探索度，否则按照指定的值来设置探索度
@@ -11,8 +13,6 @@ param_noise_scale = 0.5
 
 state_dim = 4        # 四个状态 (right, left, bottom, top)
 action_dim = 2       # 两组预设 (竖直方向的预设 + 水平方向的预设)
-action_high = 19    # 动作值的上限
-action_low = 0      # 动作值的下限
 
 screen_width = 1920
 screen_height = 1080
@@ -49,10 +49,11 @@ class TCP_Server(threading.Thread):
                     print("Connection broke out! Waiting for another connection...")
                     self.conn, self.peer_addr = self.sock.accept()
                     print(f'Port: {self.Port} Connection address: ', self.peer_addr)
-                print(f'Time: {time.time()} | Port: {self.Port} | Receive data: ', recv)
+                # print(f'Time: {time.time()} | Port: {self.Port} | Receive data: ', recv)
                 threadLock.acquire()
                 recv_buffer.append(recv)
                 threadLock.release()
+            self.conn.shutdown(socket.SHUT_RDWR)
             self.conn.close()
 
         elif self.Port == p_port:
@@ -61,17 +62,23 @@ class TCP_Server(threading.Thread):
     def send(self, msg: str):
         try:
             self.conn.send(msg.encode('utf-8'))
+            # print("Sent ", msg)
+            return True
         except:
             print(f"Cannot send message: {msg}")
+            return False
 
 
 class Arm_Env(object):
     def __init__(self):
         self.action_space = spaces.Tuple(
-            [spaces.Discrete(20), spaces.Discrete(10)]
+            [spaces.Discrete(11), spaces.Discrete(11)]
         )
         self.n_actions = self.action_space.__len__()
-        self.n_observations = state_dim
+        self.n_observations = state_dim + 2     # 还有现在的 vertical 和 horizon 位置
+
+        self.vs = 5
+        self.hs = 5
 
         self.screen_width = screen_width
         self.screen_height = screen_height
@@ -91,6 +98,8 @@ class Arm_Env(object):
             recv_buffer.clear()     # 清空 buffer
             s = recv.split(",")     # str -> str list
             s = list(map(int, s)) # str list -> float list
+            s.append(self.vs)
+            s.append(self.hs)
             s = np.array(s)
         except:
             s = None
@@ -99,7 +108,7 @@ class Arm_Env(object):
         return s
 
     def get_reward(self, s):
-        right, left, bottom, top = s
+        right, left, bottom, top, vs, hs = s
 
         #计算矩阵中心距离屏幕中心的距离
         sxc = self.screen_width/2
@@ -115,15 +124,16 @@ class Arm_Env(object):
         h = np.abs(bottom - top)
         dif = np.sqrt((h - h_std)**2 + (w - w_std)**2)
 
-        return dis + dif
+        return 100 - (dis + dif)
 
     def execute(self, action):
-        # TODO 将 action 翻译成 p 板能识别的格式
-        pass
-        act_msg = "test"
-
+        # 将 action 翻译成 p 板能识别的格式
+        act_msg = Servo.get_operation(action[0], action[1])
+        
         # 执行 action
-        self.p_server.send(act_msg)
+        if self.p_server.send(act_msg):
+            self.vs = action[0]
+            self.hs = action[1]
 
     def seed(self, seed):
         np.random.seed(seed)
@@ -132,9 +142,11 @@ class Arm_Env(object):
         self.reset()
 
     def reset(self):
-        # TODO 通过 socket 复位机械臂
-        self.execute([10, 5])   # 复位到中间
-
+        #  通过 socket 复位机械臂
+        self.vs = 10
+        self.hs = 5
+        act_msg = Servo.reset_operation()
+        self.p_server.send(act_msg)
         return self.get_state()
     
     def step(self, action):
@@ -146,7 +158,10 @@ class Arm_Env(object):
         s_ = self.get_state()
 
         # 3. 根据 s_ 计算 reward
-        reward = self.get_reward(s_)
+        if s_ is not None:
+            reward = self.get_reward(s_)
+        else:
+            reward = -100.
 
         # 4. 补充完整标准 step 函数的返回值 (虽然没有使用)
         done = False

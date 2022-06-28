@@ -18,7 +18,7 @@ model_suffix = -1            # -1 表示自动加载/保存，否则指定 suffi
 load_state = True           # 是否加载状态
 
 GAMMA = .9
-MAX_OUNOISE_SIGMA = .8
+MAX_OUNOISE_SIGMA = .6
 custom_ounoise_sigma = 0.3   # 如果是 -1，则从 MAX_OUNOISE_SIGMA 开始逐渐减小探索度，否则按照指定的值来设置探索度
 param_noise_scale = 0.5
 
