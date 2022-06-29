@@ -24,6 +24,6 @@ signal.signal(signal.SIGUSR1, do_exit)
 
 for i in range(1000000):
     control.execute()   # step 中有 0.5 秒延迟
-    if i % 10 == 1:
+    if i % 3 == 1:
         control.train()
     # time.sleep(0.5)

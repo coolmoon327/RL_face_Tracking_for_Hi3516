@@ -14,7 +14,7 @@ from RL.replay_memory import ReplayMemory, Transition
 
 from Environment import Arm_Env
 
-batch_size = 16
+batch_size = 64
 updates_per_step = 1
 
 model_suffix = -1            # -1 表示自动加载/保存，否则指定 suffix 对应的网络 model 文件
@@ -22,7 +22,7 @@ load_state = True           # 是否加载状态
 
 GAMMA = .9
 MAX_OUNOISE_SIGMA = .8
-custom_ounoise_sigma = -1   # 如果是 -1，则从 MAX_OUNOISE_SIGMA 开始逐渐减小探索度，否则按照指定的值来设置探索度
+custom_ounoise_sigma = 0.5   # 如果是 -1，则从 MAX_OUNOISE_SIGMA 开始逐渐减小探索度，否则按照指定的值来设置探索度
 param_noise_scale = 0.5
 
 replay_size = 100000
@@ -61,36 +61,62 @@ class DDPG_Algorithm:
         self.rst_timeout = 0
 
     def execute(self):
-        self.exec_timer += 1
 
         s = self.env.get_state()
         if s is None:
             self.rst_timeout += 1
-            time.sleep(1)
-            if self.rst_timeout == 5:
+            if self.rst_timeout == 4:
                 print("No human face detected. Now reseting the robot arm.")
                 self.env.reset()
                 self.rst_timeout = 0
+                time.sleep(1)
+            time.sleep(0.5)
             return
         self.rst_timeout = 0
         
+        try:
+            right, left, bottom, top, vs, hs = s
+        except:
+            return
         
+        x_center = (left + right)/2
+        y_center = (top + bottom)/2
+        offset_x = x_center/self.env.screen_width-0.5
+        offset_y = y_center/self.env.screen_height-0.5
+
+        self.exec_timer += 1
         # 1. 预测 action
         if custom_ounoise_sigma == -1:
             self.ounoise.sigma = max(0.2, MAX_OUNOISE_SIGMA - (self.train_timer/1e5))
         else:
             self.ounoise.sigma = custom_ounoise_sigma
         action_raw = self.agent.select_action(torch.Tensor([s]), self.ounoise)  # (-1., 1.)
-
-        # 2. 修改 action
         if not type(action_raw) is np.ndarray:
             action = action_raw[0, :].detach().numpy()
         else:
             action = action_raw[0, :]
         action = np.clip(action, -1., 1.)
-        for dim in range(self.env.n_actions):
-            action[dim] = (action[dim] + 1.)/2. * self.env.action_space[dim].n
-            action[dim] = np.int(action[dim])
+
+        # 2. 修改 action
+
+        # # 2.1 action 的输出直接就是位置
+        # for dim in range(self.env.n_actions):
+        #     action[dim] = (action[dim] + 1.)/2. * self.env.action_space[dim].n
+        #     action[dim] = np.int(action[dim])
+
+        # 2.2 action 的输出是偏差量
+        if offset_y > 0.05: dy = -1    # 脸在下面, 参数越小越下
+        elif offset_y < -0.05: dy = 1
+        else: dy = 0
+        action[0] = dy * ((action[0]+1.)/2.*5 + 1) + vs
+
+        if offset_x > 0.05: dx = 1     # 脸在右边, 参数越大越右
+        elif offset_x < -0.05: dx = -1
+        else: dx = 0
+        action[1] = dx * ((action[1]+1.)/2.*5 + 1) + hs
+
+        action = np.clip(action, 0, 10)
+        action = np.round(action)
         
         # 3. 执行 action
         s_, reward, done, info = self.env.step(action=action)

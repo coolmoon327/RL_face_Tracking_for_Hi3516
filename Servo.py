@@ -7,11 +7,11 @@ class Servo:
     @classmethod
     def get_operation(self, vert_op, hori_op) -> str:
         """
-            vert_op: 0~19 竖直位置, 从上到下
+            vert_op: 0~19 竖直位置, 从下到上
             hori_op: 0~9 水平位置, 从左往右
             return: 舵机操作指令
         """
-        time = "T0500!"
+        time = "T0250!"
 
         pwm_h = str(int(-hori_op * 600/10 + 1800))
         while len(pwm_h) < 4: pwm_h = "0" + pwm_h
@@ -24,6 +24,12 @@ class Servo:
         while len(pwm_v2) < 4: pwm_v2 = "0" + pwm_v2
         while len(pwm_v3) < 4: pwm_v3 = "0" + pwm_v3
         opv = "#001P" + pwm_v1 + time + "#002P" + pwm_v2 + time + "#005P" + pwm_v3 + time
+
+        # pwm_v1 = str(int(vert_op * 600/10 + 900))
+        # pwm_v3 = str(int(-vert_op * 600/10 + 1500))
+        # while len(pwm_v1) < 4: pwm_v1 = "0" + pwm_v1
+        # while len(pwm_v3) < 4: pwm_v3 = "0" + pwm_v3
+        # opv = "#001P" + pwm_v1 + time + "#002P1600" + time + "#005P" + pwm_v3 + time
 
         op = "{" + oph + opv + "}"
         return op

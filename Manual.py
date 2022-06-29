@@ -40,7 +40,7 @@ class Manual_Control:
         if offset_x > 0.1:
             act2 = hs + 1 + offset_x * 5
         elif offset_x < -0.1:
-            act2 = hs - 1 + offset_x * 5
+            act2 = hs - 1 - offset_x * 5
         else:
             act2 = hs
         act2 = np.clip(int(act2), 0, 10)
@@ -52,7 +52,7 @@ class Manual_Control:
         if offset_y > 0.1:
             act1 = vs - 1 - offset_y * 5
         elif offset_x < -0.1:
-            act1 = vs + 1 - offset_y * 5
+            act1 = vs + 1 + offset_y * 5
         else:
             act1 = vs
         act1 = np.clip(int(act1), 0, 10)

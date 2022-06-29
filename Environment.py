@@ -91,6 +91,13 @@ class Arm_Env(object):
         self.p_server.start()
 
     def get_state(self):
+        # 必须先清空 buffer，再获取新的 state
+        threadLock.acquire()
+        recv_buffer.clear()
+        threadLock.release()
+        time.sleep(0.5)
+
+
         # 通过 socket 获取初始状态 s
         threadLock.acquire()
 
@@ -145,7 +152,7 @@ class Arm_Env(object):
 
     def reset(self):
         #  通过 socket 复位机械臂
-        self.vs = 10
+        self.vs = 5
         self.hs = 5
         act_msg = Servo.reset_operation()
         self.p_server.send(act_msg)
@@ -156,7 +163,7 @@ class Arm_Env(object):
         self.execute(action)
     
         # 2. 获取状态转移
-        time.sleep(1) # TODO 调整等待的时间
+        time.sleep(0.5) # TODO 调整等待的时间
         s_ = self.get_state()
 
         # 3. 根据 s_ 计算 reward
@@ -164,8 +171,8 @@ class Arm_Env(object):
             reward = self.get_reward(s_)
             done = False
         else:
-            s_ = np.array([0, 0, 0, 0, self.vs, self.hs]) # TODO 检查这里的 s_ 设置有没有问题
-            reward = -100.
+            s_ = np.array([-1, -1, -1, -1, self.vs, self.hs]) # TODO 检查这里的 s_ 设置有没有问题
+            reward = -1000.
             done = True
 
         # 4. 补充完整标准 step 函数的返回值 (虽然没有使用)
