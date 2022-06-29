@@ -11,6 +11,7 @@ class Manual_Control:
         s = self.env.get_state()
         if s is None:
             self.rst_timeout += 1
+            time.sleep(1)
             if self.rst_timeout == 5:
                 print("No human face detected. Now reseting the robot arm.")
                 self.env.reset()

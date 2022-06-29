@@ -76,6 +76,7 @@ class Arm_Env(object):
         )
         self.n_actions = self.action_space.__len__()
         self.n_observations = state_dim + 2     # 还有现在的 vertical 和 horizon 位置
+        print("Action_space: ", self.action_space)
 
         self.vs = 5
         self.hs = 5
@@ -124,7 +125,8 @@ class Arm_Env(object):
         h = np.abs(bottom - top)
         dif = np.sqrt((h - h_std)**2 + (w - w_std)**2)
 
-        return 100 - (dis + dif)
+        # return 100 - (dis + dif)
+        return 300 - dis
 
     def execute(self, action):
         # 将 action 翻译成 p 板能识别的格式
@@ -154,17 +156,19 @@ class Arm_Env(object):
         self.execute(action)
     
         # 2. 获取状态转移
-        time.sleep(0.5) # TODO 调整等待的时间
+        time.sleep(1) # TODO 调整等待的时间
         s_ = self.get_state()
 
         # 3. 根据 s_ 计算 reward
         if s_ is not None:
             reward = self.get_reward(s_)
+            done = False
         else:
+            s_ = np.array([0, 0, 0, 0, self.vs, self.hs]) # TODO 检查这里的 s_ 设置有没有问题
             reward = -100.
+            done = True
 
         # 4. 补充完整标准 step 函数的返回值 (虽然没有使用)
-        done = False
         info = {}
 
         return s_, reward, done, info

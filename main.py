@@ -8,7 +8,8 @@ from Algorithm import DDPG_Algorithm
 from Environment import Arm_Env
 from Manual import Manual_Control
 
-control = Manual_Control()
+# control = Manual_Control()
+control = DDPG_Algorithm()
 
 def do_exit(sig, stack):
     print("Try to shutdown socket connection")
@@ -21,7 +22,8 @@ def do_exit(sig, stack):
 signal.signal(signal.SIGINT, do_exit)
 signal.signal(signal.SIGUSR1, do_exit)
 
-for _  in range(1000):
+for i in range(1000000):
     control.execute()   # step 中有 0.5 秒延迟
-    control.train()
-    time.sleep(0.5)
+    if i % 10 == 1:
+        control.train()
+    # time.sleep(0.5)

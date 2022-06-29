@@ -1,6 +1,9 @@
+from re import S
 import numpy as np
+import time
 
 from tensorboardX import SummaryWriter
+from gym import spaces
 
 import torch
 from RL.ddpg import DDPG
@@ -11,15 +14,15 @@ from RL.replay_memory import ReplayMemory, Transition
 
 from Environment import Arm_Env
 
-batch_size = 64
-updates_per_step = 5
+batch_size = 16
+updates_per_step = 1
 
 model_suffix = -1            # -1 表示自动加载/保存，否则指定 suffix 对应的网络 model 文件
 load_state = True           # 是否加载状态
 
 GAMMA = .9
-MAX_OUNOISE_SIGMA = .6
-custom_ounoise_sigma = 0.3   # 如果是 -1，则从 MAX_OUNOISE_SIGMA 开始逐渐减小探索度，否则按照指定的值来设置探索度
+MAX_OUNOISE_SIGMA = .8
+custom_ounoise_sigma = -1   # 如果是 -1，则从 MAX_OUNOISE_SIGMA 开始逐渐减小探索度，否则按照指定的值来设置探索度
 param_noise_scale = 0.5
 
 replay_size = 100000
@@ -41,8 +44,10 @@ class DDPG_Algorithm:
             self.suffix = model_suffix
         self.env_name = "arm"
         
+        action_space = spaces.Box(0, 10, (2,))
+
         self.agent = DDPG(gamma=self.gamma, tau=0.001, hidden_size=128,
-                          num_inputs=self.env.n_actions, action_space=self.env.n_observations, lr_actor=lr_actor, lr_critic=lr_critic)
+                          num_inputs=self.env.n_observations, action_space=action_space, lr_actor=lr_actor, lr_critic=lr_critic)
         self.memory = ReplayMemory(replay_size)
         self.ounoise = OUNoise(self.env.n_actions)
         self.param_noise = AdaptiveParamNoiseSpec(initial_stddev=0.05, desired_action_stddev=param_noise_scale, adaptation_coefficient=1.05)
@@ -53,13 +58,22 @@ class DDPG_Algorithm:
             except:
                 print("There is no local data.")
 
+        self.rst_timeout = 0
 
     def execute(self):
         self.exec_timer += 1
 
         s = self.env.get_state()
         if s is None:
+            self.rst_timeout += 1
+            time.sleep(1)
+            if self.rst_timeout == 5:
+                print("No human face detected. Now reseting the robot arm.")
+                self.env.reset()
+                self.rst_timeout = 0
             return
+        self.rst_timeout = 0
+        
         
         # 1. 预测 action
         if custom_ounoise_sigma == -1:
@@ -70,8 +84,10 @@ class DDPG_Algorithm:
 
         # 2. 修改 action
         if not type(action_raw) is np.ndarray:
-            action_raw = action_raw[0, :].detach().numpy()
-        action = np.clip(action_raw, -1., 1.)
+            action = action_raw[0, :].detach().numpy()
+        else:
+            action = action_raw[0, :]
+        action = np.clip(action, -1., 1.)
         for dim in range(self.env.n_actions):
             action[dim] = (action[dim] + 1.)/2. * self.env.action_space[dim].n
             action[dim] = np.int(action[dim])
@@ -80,14 +96,14 @@ class DDPG_Algorithm:
         s_, reward, done, info = self.env.step(action=action)
         
         # 4. 记录经验
-        self.push_memory(s, action_raw, done, s_, reward)
+        self.push_memory(s, action_raw.detach().numpy(), done, s_, reward)
 
-        print(f"Timer {self.exec_timer} -- raw: {action_raw} -> act: {action} | reward: {reward}")
+        print(f"Timer {self.exec_timer} -- state: {s} -- raw: {action_raw} -> act: {action} | reward: {reward}")
         self.writer.add_scalar('ddpg_reward/reward', reward, self.exec_timer)
 
     def train(self):
         memory = self.memory
-        if len(memory) > batch_size*3:
+        if len(memory) > batch_size:
             for _ in range(updates_per_step):
                 transitions = memory.sample(batch_size)
                 batch = Transition(*zip(*transitions))
@@ -132,6 +148,7 @@ class DDPG_Algorithm:
     def save_state(self):
         self.save_model()
         self.save_memory()
+        print("Save model and memory to local.")
     
     def load_state(self):
         self.load_memory()

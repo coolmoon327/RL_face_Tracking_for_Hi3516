@@ -240,13 +240,13 @@ class DDPG(object):
             param += torch.randn(param.shape) * param_noise.current_stddev
 
     def save_model(self, env_name, suffix="", actor_path=None, critic_path=None):
-        if not os.path.exists('stage_one/RL/models/'):
-            os.makedirs('stage_one/RL/models/')
+        if not os.path.exists('RL/models/'):
+            os.makedirs('RL/models/')
 
         if actor_path is None:
-            actor_path = "stage_one/RL/models/ddpg_actor_{}_{}.pkl".format(env_name, suffix)
+            actor_path = "RL/models/ddpg_actor_{}_{}.pkl".format(env_name, suffix)
         if critic_path is None:
-            critic_path = "stage_one/RL/models/ddpg_critic_{}_{}.pkl".format(env_name, suffix)
+            critic_path = "RL/models/ddpg_critic_{}_{}.pkl".format(env_name, suffix)
         print('Saving models to {} and {}'.format(actor_path, critic_path))
         torch.save(self.actor.state_dict(), actor_path)
         torch.save(self.critic.state_dict(), critic_path)

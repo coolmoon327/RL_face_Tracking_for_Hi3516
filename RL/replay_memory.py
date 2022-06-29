@@ -31,17 +31,17 @@ class ReplayMemory(object):
         return len(self.memory)
     
     def save_memory(self, env_name, suffix="", mem_path=None):
-        if not os.path.exists('stage_one/RL/mem/'):
-            os.makedirs('stage_one/RL/mem/')
+        if not os.path.exists('RL/mem/'):
+            os.makedirs('RL/mem/')
 
         if mem_path is None:
-            mem_path = "stage_one/RL/mem/mem_{}_{}.pkl".format(env_name, suffix)
+            mem_path = "RL/mem/mem_{}_{}.pkl".format(env_name, suffix)
         print('Saving memory to {}'.format(mem_path))
         with open(mem_path, 'ab') as f:
             f.seek(0)
             f.truncate()
             pickle.dump(self.memory, f)
-        conf_path = "stage_one/RL/mem/conf_{}_{}.pkl".format(env_name, suffix)
+        conf_path = "RL/mem/conf_{}_{}.pkl".format(env_name, suffix)
         with open(conf_path, 'ab') as f:
             f.seek(0)
             f.truncate()
