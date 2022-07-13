@@ -7,7 +7,7 @@ class Servo:
     @classmethod
     def get_operation(self, vert_op, hori_op) -> str:
         """
-            vert_op: 0~19 竖直位置, 从下到上
+            vert_op: 0~9 竖直位置, 从下到上
             hori_op: 0~9 水平位置, 从左往右
             return: 舵机操作指令
         """

@@ -8,8 +8,13 @@ from Algorithm import DDPG_Algorithm
 from Environment import Arm_Env
 from Manual import Manual_Control
 
-# control = Manual_Control()
-control = DDPG_Algorithm()
+rl_brain = True    # 是否使用强化学习
+test = False        # 是否为测试模式（否则会进行训练）
+
+if rl_brain:
+    control = DDPG_Algorithm()
+else:
+    control = Manual_Control()
 
 def do_exit(sig, stack):
     print("Try to shutdown socket connection")
@@ -23,7 +28,10 @@ signal.signal(signal.SIGINT, do_exit)
 signal.signal(signal.SIGUSR1, do_exit)
 
 for i in range(1000000):
-    control.execute()   # step 中有 0.5 秒延迟
-    if i % 3 == 1:
+    if test:
+        control.test()
+    else:
+        control.execute()
+        # if i % 3 == 1:
         control.train()
-    # time.sleep(0.5)
+    

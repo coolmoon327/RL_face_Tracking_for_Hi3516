@@ -11,12 +11,13 @@ class Manual_Control:
         s = self.env.get_state()
         if s is None:
             self.rst_timeout += 1
-            time.sleep(1)
-            if self.rst_timeout == 5:
+            if self.rst_timeout == 4:
                 print("No human face detected. Now reseting the robot arm.")
                 self.env.reset()
                 self.rst_timeout = 0
+            time.sleep(0.1)
             return
+        self.rst_timeout = 0
         
         self.rst_timeout = 0
         right, left, bottom, top, vs, hs = s
@@ -37,10 +38,10 @@ class Manual_Control:
         # act2 = int(x_center/self.env.screen_width * self.env.action_space[1].n)
         # act2 = np.clip(int((x_center/self.env.screen_width-0.5)*5 + hs), 0, 9)
         offset_x = x_center/self.env.screen_width-0.5
-        if offset_x > 0.1:
-            act2 = hs + 1 + offset_x * 5
-        elif offset_x < -0.1:
-            act2 = hs - 1 - offset_x * 5
+        if offset_x > 0.07:
+            act2 = hs + 1 + abs(offset_x) * 4
+        elif offset_x < -0.07:
+            act2 = hs - 1 - abs(offset_x) * 4
         else:
             act2 = hs
         act2 = np.clip(int(act2), 0, 10)
@@ -49,10 +50,10 @@ class Manual_Control:
         # act1 = int(y_center/self.env.screen_height * self.env.action_space[0].n)
         # act1 = np.clip(int(-(y_center/self.env.screen_height-0.5)*10 + vs), 0, 19)
         offset_y = y_center/self.env.screen_height-0.5
-        if offset_y > 0.1:
-            act1 = vs - 1 - offset_y * 5
-        elif offset_x < -0.1:
-            act1 = vs + 1 + offset_y * 5
+        if offset_y > 0.05:
+            act1 = vs - 1 - abs(offset_y) * 5
+        elif offset_x < -0.05:
+            act1 = vs + 1 + abs(offset_y) * 5
         else:
             act1 = vs
         act1 = np.clip(int(act1), 0, 10)
@@ -61,8 +62,12 @@ class Manual_Control:
 
         print("Action: ", action)
 
-        self.env.step(action=action)
+        self.env.step(action=action, test=True)
+        time.sleep(0.5)
     
+    def test(self):
+        self.execute()
+
     def train(self):
         pass
 

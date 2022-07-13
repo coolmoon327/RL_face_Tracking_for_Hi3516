@@ -39,7 +39,7 @@ class TCP_Server(threading.Thread):
     def run(self):
         self.sock.listen(10)
         self.conn, self.peer_addr = self.sock.accept()
-        print(f'Port: {self.Port} Connection address: ', self.peer_addr)
+        print(f'##!## Port: {self.Port} Connection address: ', self.peer_addr)
 
         if self.Port == t_port:
             while 1:
@@ -49,7 +49,9 @@ class TCP_Server(threading.Thread):
                     print("Connection broke out! Waiting for another connection...")
                     self.conn, self.peer_addr = self.sock.accept()
                     print(f'Port: {self.Port} Connection address: ', self.peer_addr)
-                # print(f'Time: {time.time()} | Port: {self.Port} | Receive data: ', recv)
+                if recv == "":
+                    continue
+                print(f'Time: {time.time()} | Port: {self.Port} | Receive data: ', recv)
                 threadLock.acquire()
                 recv_buffer.append(recv)
                 threadLock.release()
@@ -95,25 +97,32 @@ class Arm_Env(object):
         threadLock.acquire()
         recv_buffer.clear()
         threadLock.release()
-        time.sleep(0.5)
-
+        time.sleep(0.1)
 
         # 通过 socket 获取初始状态 s
-        threadLock.acquire()
+        s = None
+        time_out = 0
+        while s is None:
+            threadLock.acquire()
+            try:
+                recv = recv_buffer[-1]  # 只取最新的状态
+                recv_buffer.clear()     # 清空 buffer
+                s = recv.split(",")     # str -> str list
+                s = list(map(int, s)) # str list -> float list
+                s.append(self.vs)
+                s.append(self.hs)
+                s = np.array(s)
+            except:
+                pass
+            threadLock.release()
 
-        try:
-            recv = recv_buffer[-1]  # 只取最新的状态
-            recv_buffer.clear()     # 清空 buffer
-            s = recv.split(",")     # str -> str list
-            s = list(map(int, s)) # str list -> float list
-            s.append(self.vs)
-            s.append(self.hs)
-            s = np.array(s)
-        except:
-            s = None
+            if s is not None:
+                return s
 
-        threadLock.release()
-        return s
+            time_out+=1
+            time.sleep(0.01)
+            if time_out >= 10:
+                return None
 
     def get_reward(self, s):
         right, left, bottom, top, vs, hs = s
@@ -158,10 +167,13 @@ class Arm_Env(object):
         self.p_server.send(act_msg)
         return self.get_state()
     
-    def step(self, action):
+    def step(self, action, test=False):
         # 1. 执行 action
         self.execute(action)
     
+        if test:
+            return
+
         # 2. 获取状态转移
         time.sleep(0.5) # TODO 调整等待的时间
         s_ = self.get_state()
