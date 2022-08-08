@@ -8,8 +8,8 @@ from Algorithm import DDPG_Algorithm
 from Environment import Arm_Env
 from Manual import Manual_Control
 
-rl_brain = True    # 是否使用强化学习
-test = False        # 是否为测试模式（否则会进行训练）
+rl_brain = False    # 是否使用强化学习
+test = True        # 是否为测试模式（否则会进行训练）
 
 if rl_brain:
     control = DDPG_Algorithm()
@@ -27,7 +27,7 @@ def do_exit(sig, stack):
 signal.signal(signal.SIGINT, do_exit)
 signal.signal(signal.SIGUSR1, do_exit)
 
-for i in range(1000000):
+for i in range(10000000):
     if test:
         control.test()
     else:

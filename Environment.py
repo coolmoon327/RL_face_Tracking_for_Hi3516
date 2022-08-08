@@ -47,9 +47,10 @@ class TCP_Server(threading.Thread):
                     recv = self.conn.recv(BUFFER_SIZE).decode()
                 except:
                     print("Connection broke out! Waiting for another connection...")
-                    self.conn, self.peer_addr = self.sock.accept()
+                    conn, peer_addr = self.sock.accept()
+                    self.conn, self.peer_addr = conn, peer_addr
                     print(f'Port: {self.Port} Connection address: ', self.peer_addr)
-                if recv == "":
+                if recv == "" or recv == "0" or recv[0] == "," or recv.__len__() < 8:
                     continue
                 print(f'Time: {time.time()} | Port: {self.Port} | Receive data: ', recv)
                 threadLock.acquire()
@@ -59,7 +60,10 @@ class TCP_Server(threading.Thread):
             self.conn.close()
 
         elif self.Port == p_port:
-            pass
+            while 1:
+                conn, peer_addr = self.sock.accept()
+                self.conn, self.peer_addr = conn, peer_addr
+                print(f'Port: {self.Port} Connection address: ', self.peer_addr)
 
     def send(self, msg: str):
         try:
@@ -116,11 +120,11 @@ class Arm_Env(object):
                 pass
             threadLock.release()
 
-            if s is not None:
+            if s is not None and s.__len__() == 6:
                 return s
 
             time_out+=1
-            time.sleep(0.01)
+            time.sleep(0.1)
             if time_out >= 10:
                 return None
 
